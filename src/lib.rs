@@ -29,7 +29,7 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(box_syntax, core, collections, hash, std_misc)]
+#![feature(box_syntax, core, collections, std_misc)]
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentId};

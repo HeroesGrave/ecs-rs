@@ -1,13 +1,13 @@
 
-use std::borrow::BorrowFrom;
-use std::collections::{RingBuf};
-use std::collections::hash_map::{HashMap, Hasher};
+use std::borrow::Borrow;
+use std::collections::{VecDeque};
+use std::collections::hash_map::{HashMap};
 use std::hash::Hash;
 
 use Manager;
 
-pub trait StateKey: Hash<Hasher>+Eq+'static {}
-impl<T: Hash<Hasher>+Eq+'static> StateKey for T {}
+pub trait StateKey: Hash+Eq+'static {}
+impl<T: Hash+Eq+'static> StateKey for T {}
 
 pub struct StateManager<Event, State: 'static>
 {
@@ -30,15 +30,15 @@ impl<E: StateKey, S: 'static> StateManager<E, S>
     }
 
     pub fn get<Q: ?Sized>(&self, event: &Q) -> Option<&S>
-        where Q: StateKey+BorrowFrom<E>
+        where Q: StateKey+Borrow<E>
     {
-        self.states.get(event)
+        self.states.get(event.borrow())
     }
 
     pub fn clear<Q: ?Sized>(&mut self, event: &Q) -> Option<S>
-        where Q: StateKey+BorrowFrom<E>
+        where Q: StateKey+Borrow<E>
     {
-        self.states.remove(event)
+        self.states.remove(event.borrow())
     }
 
     pub fn clear_all(&mut self)
@@ -54,7 +54,7 @@ impl<E: StateKey, S: 'static> Manager for StateManager<E, S>
 
 pub struct QueueManager<Event: 'static>
 {
-    queue: RingBuf<Event>,
+    queue: VecDeque<Event>,
 }
 
 impl<E: 'static> QueueManager<E>
@@ -63,7 +63,7 @@ impl<E: 'static> QueueManager<E>
     {
         QueueManager
         {
-            queue: RingBuf::new(),
+            queue: VecDeque::new(),
         }
     }
 

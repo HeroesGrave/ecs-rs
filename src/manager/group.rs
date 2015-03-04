@@ -1,6 +1,6 @@
 
-use std::borrow::BorrowFrom;
-use std::collections::hash_map::{Entry, HashMap, Hasher};
+use std::borrow::Borrow;
+use std::collections::hash_map::{Entry, HashMap};
 use std::hash::Hash;
 use std::ops::{Index, IndexMut};
 
@@ -8,8 +8,8 @@ use Entity;
 use Manager;
 use World;
 
-pub trait GroupKey: Hash<Hasher>+Eq+'static {}
-impl<T: Hash<Hasher>+Eq+'static> GroupKey for T {}
+pub trait GroupKey: Hash+Eq+'static {}
+impl<T: Hash+Eq+'static> GroupKey for T {}
 
 pub struct GroupManager<Key: GroupKey>
 {
@@ -38,15 +38,15 @@ impl<Key: GroupKey> GroupManager<Key>
     }
 
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&Vec<Entity>>
-        where Q: GroupKey+BorrowFrom<Key>
+        where Q: GroupKey+Borrow<Key>
     {
-        self.groups.get(key)
+        self.groups.get(key.borrow())
     }
 
     pub fn delete<Q: ?Sized>(&mut self, key: &Q) -> Option<Vec<Entity>>
-        where Q: GroupKey+BorrowFrom<Key>
+        where Q: GroupKey+Borrow<Key>
     {
-        self.groups.remove(key)
+        self.groups.remove(key.borrow())
     }
 }
 
