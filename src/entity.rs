@@ -161,7 +161,7 @@ impl IndexPool
         IndexPool
         {
             recycled: Vec::new(),
-            next_index: 1us,
+            next_index: 1usize,
         }
     }
 

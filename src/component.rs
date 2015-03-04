@@ -2,7 +2,7 @@
 //! Store data in parts to allow defining different entities through composition.
 
 use std::any::TypeId;
-use std::collections::Bitv;
+use std::collections::BitVec;
 use std::mem;
 
 use buffer::Buffer;
@@ -19,7 +19,7 @@ pub type ComponentId = TypeId;
 pub struct ComponentList
 {
     buffer: Buffer,
-    enabled: Bitv,
+    enabled: BitVec,
     id: ComponentId,
 }
 
@@ -30,7 +30,7 @@ impl ComponentList
         ComponentList
         {
             buffer: Buffer::new(mem::size_of::<T>()),
-            enabled: Bitv::new(),
+            enabled: BitVec::new(),
             id: TypeId::of::<T>(),
         }
     }
@@ -38,7 +38,7 @@ impl ComponentList
     pub fn clear(&mut self)
     {
         self.buffer.clear();
-        self.enabled = Bitv::new();
+        self.enabled = BitVec::new();
     }
 
     pub fn add<T:Component>(&mut self, entity: &Entity, component: &T)
