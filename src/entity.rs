@@ -13,10 +13,12 @@ use EntityData;
 pub type Id = u64;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(feature="serialisation", derive(CerealData))]
 pub struct Entity(Id);
 
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct IndexedEntity<T: ComponentManager>(usize, Entity, PhantomData<fn(T)>);
+#[cfg_attr(feature="serialisation", derive(CerealData))]
+pub struct IndexedEntity<T: ComponentManager>(usize, Entity, PhantomData<T>);
 
 impl Entity
 {
@@ -123,6 +125,7 @@ impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
 
 /// Handles creation, activation, and validating of entities.
 #[doc(hidden)]
+#[cfg_attr(feature="serialisation", derive(CerealData))]
 pub struct EntityManager<T: ComponentManager>
 {
     indices: IndexPool,
@@ -181,6 +184,8 @@ impl<T: ComponentManager> EntityManager<T>
     }
 }
 
+
+#[cfg_attr(feature="serialisation", derive(CerealData))]
 struct IndexPool
 {
     recycled: Vec<usize>,

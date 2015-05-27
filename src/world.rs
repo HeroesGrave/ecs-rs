@@ -1,4 +1,7 @@
 
+#[cfg(feature="serialisation")] use cereal::{CerealData, CerealError, CerealResult};
+#[cfg(feature="serialisation")] use std::io::{Read, Write};
+
 use std::ops::{Deref, DerefMut};
 
 use {BuildData, EntityData, ModifyData};
@@ -98,7 +101,7 @@ impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
         }
     }
 
-    pub fn create_entity<B>(&mut self, mut builder: B) -> Entity where B: EntityBuilder<C>
+    pub fn create_entity<B>(&mut self, builder: B) -> Entity where B: EntityBuilder<C>
     {
         let entity = self.entities.create();
         builder.build(BuildData(self.entities.indexed(&entity)), &mut self.components);
@@ -109,6 +112,48 @@ impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
     pub fn remove_entity(&mut self, entity: Entity)
     {
         self.event_queue.push(Event::RemoveEntity(entity));
+    }
+}
+
+#[cfg(feature="serialisation")]
+impl<C: ComponentManager, M: ServiceManager> CerealData for DataHelper<C, M> where C: CerealData, M: CerealData {
+    fn write(&self, w: &mut Write) -> CerealResult<()> {
+        if self.event_queue.len() != 0 {
+            Err(CerealError::Msg("Please flush events before serialising the world".to_string()))
+        } else {
+            try!(self.services.write(w));
+            try!(self.entities.write(w));
+            self.components.write(w)
+        }
+    }
+
+    fn read(r: &mut Read) -> CerealResult<Self> {
+        let services = try!(CerealData::read(r));
+        let entities = try!(CerealData::read(r));
+        let components = try!(CerealData::read(r));
+        Ok(DataHelper {
+            components: components,
+            services: services,
+            entities: entities,
+            event_queue: Vec::new(),
+        })
+    }
+}
+
+#[cfg(feature="serialisation")]
+impl<S: SystemManager> World<S> where DataHelper<S::Components, S::Services>: CerealData {
+    pub fn load(reader: &mut Read) -> CerealResult<World<S>> {
+        let mut world = World {
+            systems: unsafe { S::new() },
+            data: try!(CerealData::read(reader)),
+        };
+        world.refresh();
+        Ok(world)
+    }
+
+    pub fn save(&mut self, writer: &mut Write) -> CerealResult<()> {
+        self.flush_queue();
+        self.data.write(writer)
     }
 }
 
@@ -132,14 +177,22 @@ impl<S: SystemManager> World<S>
         self.data.entities.iter()
     }
 
-    pub fn modify_entity<M>(&mut self, entity: Entity, mut modifier: M) where M: EntityModifier<S::Components>
+    pub fn modify_entity<M>(&mut self, entity: Entity, modifier: M) where M: EntityModifier<S::Components>
     {
         let indexed = self.data.entities.indexed(&entity);
         modifier.modify(ModifyData(indexed), &mut self.data.components);
         unsafe { self.systems.reactivated(EntityData(indexed), &mut self.data.components); }
     }
 
-    fn flush_queue(&mut self)
+    pub fn refresh(&mut self)
+    {
+        self.flush_queue();
+        for entity in self.data.entities.iter() {
+            unsafe { self.systems.reactivated(entity, &mut self.data.components); }
+        }
+    }
+
+    pub fn flush_queue(&mut self)
     {
         for e in self.data.event_queue.drain(..) {
             match e {

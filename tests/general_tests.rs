@@ -2,8 +2,8 @@
 #[macro_use]
 extern crate ecs;
 
-use ecs::{BuildData, ModifyData};
-use ecs::{World, DataHelper};
+use ecs::{ModifyData};
+use ecs::{World};
 use ecs::{Process, System};
 use ecs::system::{EntityProcess, EntitySystem};
 use ecs::EntityIter;
@@ -22,16 +22,18 @@ pub struct Team(u8);
 pub struct SomeFeature;
 
 components! {
-    TestComponents {
+    #[builder(EntityInit)]
+    #[modifier(EntityChange)]
+    struct TestComponents {
         #[hot] blank_data: (),
         #[hot] position: Position,
         #[cold] team: Team,
-        #[hot] feature: SomeFeature
+        #[hot] feature: SomeFeature,
     }
 }
 
 systems! {
-    TestSystems<TestComponents, ()> {
+    struct TestSystems<TestComponents, ()> {
         hello_world: HelloWorld = HelloWorld("Hello, World!"),
         print_position: EntitySystem<PrintPosition> = EntitySystem::new(PrintPosition,
                 aspect!(<TestComponents>
@@ -41,10 +43,12 @@ systems! {
     }
 }
 
+pub type DataHelper = ecs::DataHelper<TestComponents, ()>;
+
 pub struct HelloWorld(&'static str);
 impl Process for HelloWorld
 {
-    fn process(&mut self, _: &mut DataHelper<TestComponents, ()>)
+    fn process(&mut self, _: &mut DataHelper)
     {
         println!("{}", self.0);
     }
@@ -54,7 +58,7 @@ impl System for HelloWorld { type Components = TestComponents; type Services = (
 pub struct PrintPosition;
 impl EntityProcess for PrintPosition
 {
-    fn process(&mut self, en: EntityIter<TestComponents>, co: &mut DataHelper<TestComponents, ()>)
+    fn process(&mut self, en: EntityIter<TestComponents>, co: &mut DataHelper)
     {
         for e in en
         {
@@ -74,18 +78,23 @@ fn test_general_1()
     let mut world = World::<TestSystems>::new();
 
     // Test entity builders
-    let entity = world.create_entity(|e: BuildData<TestComponents>, c: &mut TestComponents| {
-        c.position.add(&e, Position { x: 0.5, y: 0.7 });
-        c.team.add(&e, Team(4));
+    let entity = world.create_entity(EntityInit {
+        position: Some(Position { x: 0.5, y: 0.7 }),
+        team: Some(Team(4)),
+        ..Default::default()
     });
-    world.create_entity(|e: BuildData<TestComponents>, c: &mut TestComponents| {
-        c.position.add(&e, Position { x: 0.6, y: 0.8 });
-        c.team.add(&e, Team(3));
-        c.feature.add(&e, SomeFeature);
+    world.create_entity(EntityInit {
+        position: Some(Position { x: 0.6, y: 0.8 }),
+        team: Some(Team(3)),
+        feature: Some(SomeFeature),
+        ..Default::default()
     });
 
+    // Finish adding new entities
+    world.flush_queue();
+
     // Test passive systems
-    world.systems.print_position.process(&mut world.data);
+    process!(world, print_position);
 
     // Test entity modifiers
     world.modify_entity(entity, |e: ModifyData<TestComponents>, c: &mut TestComponents| {
@@ -94,12 +103,22 @@ fn test_general_1()
         assert!(!c.feature.has(&e));
         assert!(c.feature.insert(&e, SomeFeature).is_none());
     });
+
     process!(world, print_position);
+
     world.modify_entity(entity, |e: ModifyData<TestComponents>, c: &mut TestComponents| {
         assert_eq!(Position { x: -2.5, y: 7.6 }, c.position[e]);
         assert_eq!(None, c.team.remove(&e));
         assert!(c.feature.insert(&e, SomeFeature).is_some());
     });
+
+    world.modify_entity(entity, EntityChange {
+        position: Some(Some(Position { x: 0.5, y: 0.7 })), // Set
+        team: Some(None), // Remove
+        ..Default::default() // Ignore the rest (None)
+    });
+
+    process!(world, print_position);
 
     // Test external entity iterator
     for e in world.entities()

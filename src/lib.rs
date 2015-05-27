@@ -21,16 +21,18 @@
 //! components, and only runs it's logic on the entities it's interested in. These filters are
 //! called `Aspect`s. Some systems ignore entities, and just apply logic to the world itself.
 //! - An `Aspect` is a simple helper to filter entities based on their components.
-//! - A `Manager` is simply an object that observes when an entity is
-//! added/activated/deactivated/removed. They are used to help 'manage' the entities, rather than
-//! define data or logic.
 //! - The `World` organises all the above items together to make sure everything runs as it should.
 
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![feature(collections)]
-#![feature(collections_drain)]
+#![cfg_attr(feature="serialisation", feature(custom_derive, plugin))]
+#![cfg_attr(feature="serialisation", plugin(cereal_macros))]
+
+#![feature(collections, collections_drain)]
+
+#[cfg(feature="serialisation")]
+extern crate cereal;
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentList};
@@ -63,16 +65,16 @@ impl<'a, T: ComponentManager> Copy for BuildData<'a, T> {}
 impl<'a, T: ComponentManager> Copy for ModifyData<'a, T> {}
 impl<'a, T: ComponentManager> Copy for EntityData<'a, T> {}
 
-impl<'a, T: ComponentManager> Clone for BuildData<'a, T> {fn clone(&self) -> BuildData<'a, T> {*self}}
-impl<'a, T: ComponentManager> Clone for ModifyData<'a, T> {fn clone(&self) -> ModifyData<'a, T> {*self}}
-impl<'a, T: ComponentManager> Clone for EntityData<'a, T> {fn clone(&self) -> EntityData<'a, T> {*self}}
+impl<'a, T: ComponentManager> Clone for BuildData<'a, T> { fn clone(&self) -> BuildData<'a, T> { *self } }
+impl<'a, T: ComponentManager> Clone for ModifyData<'a, T> { fn clone(&self) -> ModifyData<'a, T> { *self } }
+impl<'a, T: ComponentManager> Clone for EntityData<'a, T> { fn clone(&self) -> EntityData<'a, T> { *self } }
 
 #[doc(hidden)]
 pub unsafe trait EditData<T: ComponentManager> { fn entity(&self) -> &IndexedEntity<T>; }
 unsafe impl<'a, T: ComponentManager> EditData<T> for ModifyData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
 unsafe impl<'a, T: ComponentManager> EditData<T> for EntityData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
 
-#[macro_use]
+// XXX: Eventually make these syntax extensions, once they are stabilised
 mod macros
 {
     #[macro_export]
@@ -87,8 +89,10 @@ mod macros
     #[macro_export]
     macro_rules! components {
         {
-            $Name:ident;
+            $(#[$attr:meta])*
+            struct $Name:ident;
         } => {
+            $(#[$attr])*
             pub struct $Name;
 
             unsafe impl $crate::ComponentManager for $Name
@@ -105,10 +109,59 @@ mod macros
             }
         };
         {
-            $Name:ident {
+            #[builder($Builder:ident)]
+            #[modifier($Modifier:ident)]
+            $(#[$attr:meta])*
+            struct $Name:ident {
                 $(#[$kind:ident] $field_name:ident : $field_ty:ty),+
             }
         } => {
+            components!($(#[$attr])* struct $Name { $(#[$kind] $field_name : $field_ty),+ });
+
+            #[derive(Default)]
+            pub struct $Builder {
+                $(
+                    pub $field_name : Option<$field_ty>,
+                )+
+            }
+
+            impl $crate::EntityBuilder<$Name> for $Builder
+            {
+                fn build(self, e: $crate::BuildData<$Name>, c: &mut $Name)
+                {
+                    $(
+                        self.$field_name.map(|cmpt| c.$field_name.add(&e, cmpt))
+                    );+;
+                }
+            }
+
+            #[derive(Default)]
+            pub struct $Modifier {
+                $(
+                    pub $field_name : Option<Option<$field_ty>>,
+                )+
+            }
+
+            impl $crate::EntityModifier<$Name> for $Modifier
+            {
+                fn modify(self, e: $crate::ModifyData<$Name>, c: &mut $Name)
+                {
+                    $(
+                        self.$field_name.map(|opt| match opt {
+                            Some(cmpt) => c.$field_name.insert(&e, cmpt),
+                            None => c.$field_name.remove(&e),
+                        })
+                    );+;
+                }
+            }
+        };
+        {
+            $(#[$attr:meta])*
+            struct $Name:ident {
+                $(#[$kind:ident] $field_name:ident : $field_ty:ty),+
+            }
+        } => {
+            $(#[$attr])*
             pub struct $Name {
                 $(
                     pub $field_name : $crate::ComponentList<$Name, $field_ty>,
@@ -121,35 +174,60 @@ mod macros
                 {
                     $Name {
                         $(
-                            $field_name : $crate::ComponentList::$kind(),
-                        )+
+                            $field_name : $crate::ComponentList::$kind()
+                        ),+
                     }
                 }
 
                 unsafe fn remove_all(&mut self, entity: &$crate::IndexedEntity<$Name>)
                 {
                     $(
-                        self.$field_name.clear(entity);
-                    )+
+                        self.$field_name.clear(entity)
+                    );+
                 }
             }
         };
         {
-            $Name:ident {
+            #[builder($Builder:ident)]
+            #[modifier($Modifier:ident)]
+            $(#[$attr:meta])*
+            struct $Name:ident {
                 $(#[$kind:ident] $field_name:ident : $field_ty:ty),+,
             }
         } => {
-            components! { $Name { $(#[$kind] $field_name : $field_ty),+ } }
+            components!(
+                #[builder($Builder)]
+                #[modifier($Modifier)]
+                $(#[$attr])*
+                struct $Name {
+                    $(#[$kind] $field_name : $field_ty),+
+                }
+            );
+        };
+        {
+            $(#[$attr:meta])*
+            struct $Name:ident {
+                $(#[$kind:ident] $field_name:ident : $field_ty:ty),+,
+            }
+        } => {
+            components!(
+                $(#[$attr])*
+                struct $Name {
+                    $(#[$kind] $field_name : $field_ty),+
+                }
+            );
         };
     }
 
     #[macro_export]
     macro_rules! services {
         {
-            $Name:ident {
+            $(#[$attr:meta])*
+            struct $Name:ident {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+
             }
         } => {
+            $(#[$attr])*
             pub struct $Name {
                 $(
                     pub $field_name : $field_ty,
@@ -169,19 +247,22 @@ mod macros
             }
         };
         {
-            $Name:ident {
+            $(#[$attr:meta])*
+            struct $Name:ident {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+,
             }
         } => {
-            services! { $Name { $($field_name : $field_ty = $field_init),+ } }
+            services! { $(#[$attr])* struct $Name { $($field_name : $field_ty = $field_init),+ } }
         }
     }
 
     #[macro_export]
     macro_rules! systems {
         {
-            $Name:ident<$components:ty, $services:ty>;
+            $(#[$attr:meta])*
+            struct $Name:ident<$components:ty, $services:ty>;
         } => {
+            $(#[$attr])*
             pub struct $Name;
 
             unsafe impl $crate::SystemManager for $Name
@@ -216,10 +297,12 @@ mod macros
             }
         };
         {
-            $Name:ident<$components:ty, $services:ty> {
+            $(#[$attr:meta])*
+            struct $Name:ident<$components:ty, $services:ty> {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+
             }
         } => {
+            $(#[$attr])*
             pub struct $Name {
                 $(
                     pub $field_name : $field_ty,
@@ -272,11 +355,17 @@ mod macros
             }
         };
         {
-            $Name:ident<$components:ty, $services:ty> {
+            $(#[$attr:meta])*
+            struct $Name:ident<$components:ty, $services:ty> {
                 $($field_name:ident : $field_ty:ty = $field_init:expr),+,
             }
         } => {
-            systems! { $Name<$components, $services> { $($field_name : $field_ty = $field_init),+ } }
+            systems!(
+                $(#[$attr])*
+                struct $Name<$components, $services> {
+                    $($field_name : $field_ty = $field_init),+
+                }
+            );
         }
     }
 

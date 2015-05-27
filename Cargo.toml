@@ -1,7 +1,7 @@
 [package]
 
 name = "ecs"
-version = "0.18.7"
+version = "0.19.0"
 authors = ["HeroesGrave"]
 description = "An Entity Component System (ECS) Framework"
 repository = "https://github.com/HeroesGrave/ecs-rs"
@@ -14,3 +14,16 @@ keywords = [
     "component",
     "game",
 ]
+
+[features]
+# default = ["serialisation"] # Don't enable it by default yet
+serialisation = ["cereal", "cereal_macros"]
+
+[dependencies.cereal]
+version = "*"
+features = ["nightly"]
+optional = true
+
+[dependencies.cereal_macros]
+version = "*"
+optional = true

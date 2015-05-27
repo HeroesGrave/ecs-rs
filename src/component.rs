@@ -1,4 +1,7 @@
 
+#[cfg(feature="serialisation")] use cereal::{CerealData, CerealError, CerealResult};
+#[cfg(feature="serialisation")] use std::io::{Read, Write};
+
 use std::collections::{HashMap, VecMap};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
@@ -13,12 +16,71 @@ pub trait Component: 'static {}
 
 impl<T:'static> Component for T {}
 
-pub struct ComponentList<C: ComponentManager, T: Component>(InnerComponentList<T>, PhantomData<fn(C)>);
+pub struct ComponentList<C: ComponentManager, T: Component>(InnerComponentList<T>, PhantomData<C>);
 
 enum InnerComponentList<T: Component>
 {
     Hot(VecMap<T>),
     Cold(HashMap<usize, T>),
+}
+
+#[cfg(feature="serialisation")]
+impl<C: ComponentManager, T: Component> CerealData for ComponentList<C, T> where T: CerealData {
+    fn write(&self, w: &mut Write) -> CerealResult<()> {
+        self.0.write(w)
+    }
+
+    fn read(r: &mut Read) -> CerealResult<Self> {
+        CerealData::read(r).map(|inner| ComponentList(inner, PhantomData))
+    }
+}
+
+#[cfg(feature="serialisation")]
+impl<T: Component> CerealData for InnerComponentList<T> where T: CerealData {
+    fn write(&self, w: &mut Write) -> CerealResult<()> {
+        match *self {
+            Hot(ref list) => {
+                try!(1u8.write(w));
+                try!(list.len().write(w));
+                for (idx, data) in list {
+                    try!(idx.write(w));
+                    try!(data.write(w));
+                }
+            },
+            Cold(ref list) => {
+                try!(2u8.write(w));
+                try!(list.len().write(w));
+                for (idx, data) in list {
+                    try!(idx.write(w));
+                    try!(data.write(w));
+                }
+            },
+        }
+        Ok(())
+    }
+
+    fn read(r: &mut Read) -> CerealResult<Self> {
+        let kind: u8 = try!(CerealData::read(r));
+        match kind {
+            1 => { // Hot
+                let len = try!(CerealData::read(r));
+                let mut map = VecMap::with_capacity(len);
+                for _ in 0..len {
+                    map.insert(try!(CerealData::read(r)), try!(CerealData::read(r)));
+                }
+                Ok(Hot(map))
+            },
+            2 => { // Cold
+                let len = try!(CerealData::read(r));
+                let mut map = HashMap::with_capacity(len);
+                for _ in 0..len {
+                    map.insert(try!(CerealData::read(r)), try!(CerealData::read(r)));
+                }
+                Ok(Cold(map))
+            },
+            x => Err(CerealError::Msg(format!("Unrecognized list type (Hot = 1, Cold = 2, Found {:?})", x))),
+        }
+    }
 }
 
 impl<C: ComponentManager, T: Component> ComponentList<C, T>
@@ -133,30 +195,30 @@ impl<C: ComponentManager, T: Component, U: EditData<C>> IndexMut<U> for Componen
 
 pub trait EntityBuilder<T: ComponentManager>
 {
-    fn build<'a>(&mut self, BuildData<'a, T>, &mut T);
+    fn build<'a>(self, BuildData<'a, T>, &mut T);
 }
 
-impl<T: ComponentManager, F> EntityBuilder<T> for F where F: FnMut(BuildData<T>, &mut T)
+impl<T: ComponentManager, F> EntityBuilder<T> for F where F: FnOnce(BuildData<T>, &mut T)
 {
-    fn build(&mut self, e: BuildData<T>, c: &mut T)
+    fn build(self, e: BuildData<T>, c: &mut T)
     {
-        (*self)(e, c);
+        self(e, c);
     }
 }
 
-impl<T: ComponentManager> EntityBuilder<T> for () { fn build(&mut self, _: BuildData<T>, _: &mut T) {} }
+impl<T: ComponentManager> EntityBuilder<T> for () { fn build(self, _: BuildData<T>, _: &mut T) {} }
 
 pub trait EntityModifier<T: ComponentManager>
 {
-    fn modify<'a>(&mut self, ModifyData<'a, T>, &mut T);
+    fn modify<'a>(self, ModifyData<'a, T>, &mut T);
 }
 
-impl<T: ComponentManager, F> EntityModifier<T> for F where F: FnMut(ModifyData<T>, &mut T)
+impl<T: ComponentManager, F> EntityModifier<T> for F where F: FnOnce(ModifyData<T>, &mut T)
 {
-    fn modify(&mut self, e: ModifyData<T>, c: &mut T)
+    fn modify(self, e: ModifyData<T>, c: &mut T)
     {
-        (*self)(e, c);
+        self(e, c);
     }
 }
 
-impl<T: ComponentManager> EntityModifier<T> for () { fn modify(&mut self, _: ModifyData<T>, _: &mut T) {} }
+impl<T: ComponentManager> EntityModifier<T> for () { fn modify(self, _: ModifyData<T>, _: &mut T) {} }

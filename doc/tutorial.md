@@ -54,11 +54,11 @@ extern crate ecs;
 use ecs::World;
 
 components! {
-    MyComponents;
+    struct MyComponents;
 }
 
 systems! {
-    MySystems<MyComponents, ()>;
+    struct MySystems<MyComponents, ()>;
 }
 
 fn main() {
@@ -108,7 +108,7 @@ pub struct Position {
 And then we change our `ComponentManager` to this:
 ```rust
 components! {
-    MyComponents {
+    struct MyComponents {
         #[hot] position: Position
     }
 }
@@ -125,7 +125,7 @@ Generally, you should use `#[cold]` by default, and `#[hot]` for the most import
 For the sake of demonstration, let's add another `Position` component that holds the respawn location of an entity.
 ```rust
 components! {
-    MyComponents {
+    struct MyComponents {
         #[hot] position: Position,
         #[cold] respawn: Position
     }
@@ -200,7 +200,7 @@ impl Process for PrintMessage {
 To add the system, we modify our call to the `systems!` macro to look like this:
 ```rust
 systems! {
-    MySystems<MyComponents, ()> {
+    struct MySystems<MyComponents, ()> {
         print_msg: PrintMessage = PrintMessage("Hello World".to_string())
     }
 }
@@ -258,7 +258,7 @@ pub struct Velocity {
 And then add it to the component definition: (removing respawn because it's irrelevant)
 ```rust
 components! {
-    MyComponents {
+    struct MyComponents {
         #[hot] position: Position,
         #[hot] velocity: Velocity
     }
@@ -297,7 +297,7 @@ fn process(&mut self, entities: EntityIter<MyComponents>, data: &mut DataHelper<
 Next, we have to add this to the systems definition:
 ```rust
 systems! {
-    MySystems<MyComponents, ()> {
+    struct MySystems<MyComponents, ()> {
         motion: EntitySystem<MotionProcess> = EntitySystem::new(
             MotionProcess,
             aspect!(<MyComponents> all: [position, velocity])

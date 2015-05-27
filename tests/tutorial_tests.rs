@@ -9,11 +9,11 @@ pub mod chapter2 {
     use ecs::World;
 
     components! {
-        MyComponents;
+        struct MyComponents;
     }
 
     systems! {
-        MySystems<MyComponents, ()>;
+        struct MySystems<MyComponents, ()>;
     }
 
     #[test]
@@ -51,14 +51,14 @@ pub mod chapter4 {
     }
 
     components! {
-        MyComponents {
+        struct MyComponents {
             #[hot] position: Position,
             #[cold] respawn: Position
         }
     }
 
     systems! {
-        MySystems<MyComponents, ()>;
+        struct MySystems<MyComponents, ()>;
     }
 
     #[test]
@@ -108,7 +108,7 @@ pub mod chapter5 {
     }
 
     systems! {
-        MySystems<MyComponents, ()> {
+        struct MySystems<MyComponents, ()> {
             print_msg: PrintMessage = PrintMessage("Hello World".to_string())
         }
     }
@@ -138,7 +138,7 @@ pub mod chapter6 {
     }
 
     components! {
-        MyComponents {
+        struct MyComponents {
             #[hot] position: Position,
             #[hot] velocity: Velocity
         }
@@ -159,7 +159,7 @@ pub mod chapter6 {
     }
 
     systems! {
-        MySystems<MyComponents, ()> {
+        struct MySystems<MyComponents, ()> {
             motion: EntitySystem<MotionProcess> = EntitySystem::new(MotionProcess, aspect!(<MyComponents> all: [position, velocity]))
         }
     }
