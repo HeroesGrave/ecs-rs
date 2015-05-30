@@ -326,28 +326,28 @@ mod macros
                 unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components)
                 {
                     $(
-                        self.$field_name.activated(&en, co);
+                        $crate::System::activated(&mut self.$field_name, &en, co);
                     )+
                 }
 
                 unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
                 {
                     $(
-                        self.$field_name.reactivated(&en, co);
+                        $crate::System::reactivated(&mut self.$field_name, &en, co);
                     )+
                 }
 
                 unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
                 {
                     $(
-                        self.$field_name.deactivated(&en, co);
+                        $crate::System::deactivated(&mut self.$field_name, &en, co);
                     )+
                 }
 
                 unsafe fn update(&mut self, co: &mut $crate::DataHelper<$components, $services>)
                 {
                     $(
-                        if self.$field_name.is_active() {
+                        if $crate::System::is_active(&self.$field_name) {
                             $crate::Process::process(&mut self.$field_name, co);
                         }
                     )+
