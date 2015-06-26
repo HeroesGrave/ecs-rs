@@ -29,7 +29,7 @@
 #![cfg_attr(feature="serialisation", feature(custom_derive, plugin))]
 #![cfg_attr(feature="serialisation", plugin(cereal_macros))]
 
-#![feature(collections, collections_drain)]
+#![feature(vecmap, drain)]
 
 #[cfg(feature="serialisation")]
 extern crate cereal;

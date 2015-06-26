@@ -1,7 +1,7 @@
 [package]
 
 name = "ecs"
-version = "0.19.1"
+version = "0.19.2"
 authors = ["HeroesGrave"]
 description = "An Entity Component System (ECS) Framework"
 repository = "https://github.com/HeroesGrave/ecs-rs"
