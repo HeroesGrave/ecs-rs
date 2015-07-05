@@ -33,7 +33,7 @@ pub struct DataHelper<C, M> where C: ComponentManager, M: ServiceManager
 pub unsafe trait ComponentManager: 'static
 {
     unsafe fn new() -> Self;
-    unsafe fn remove_all(&mut self, en: &IndexedEntity<Self>);
+    unsafe fn remove_all(&mut self, &IndexedEntity<Self>);
 }
 
 pub trait ServiceManager: 'static
@@ -48,10 +48,10 @@ pub unsafe trait SystemManager
     type Components: ComponentManager;
     type Services: ServiceManager;
     unsafe fn new() -> Self;
-    unsafe fn activated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
-    unsafe fn reactivated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
-    unsafe fn deactivated(&mut self, en: EntityData<Self::Components>, co: &Self::Components);
-    unsafe fn update(&mut self, co: &mut DataHelper<Self::Components, Self::Services>);
+    unsafe fn activated(&mut self, EntityData<Self::Components>, &Self::Components);
+    unsafe fn reactivated(&mut self, EntityData<Self::Components>, &Self::Components);
+    unsafe fn deactivated(&mut self, EntityData<Self::Components>, &Self::Components);
+    unsafe fn update(&mut self, &mut DataHelper<Self::Components, Self::Services>);
 }
 
 impl<S: SystemManager> Deref for World<S>

@@ -18,9 +18,9 @@ pub trait EntityProcess: System
 
 pub struct EntitySystem<T: EntityProcess>
 {
+    pub inner: T,
     interested: HashMap<Entity, IndexedEntity<T::Components>>,
     aspect: Aspect<T::Components>,
-    pub inner: T,
 }
 
 impl<T: EntityProcess> EntitySystem<T>

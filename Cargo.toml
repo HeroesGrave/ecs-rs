@@ -1,7 +1,7 @@
 [package]
 
 name = "ecs"
-version = "0.19.2"
+version = "0.19.3"
 authors = ["HeroesGrave"]
 description = "An Entity Component System (ECS) Framework"
 repository = "https://github.com/HeroesGrave/ecs-rs"
@@ -21,7 +21,6 @@ serialisation = ["cereal", "cereal_macros"]
 
 [dependencies.cereal]
 version = "*"
-features = ["nightly"]
 optional = true
 
 [dependencies.cereal_macros]

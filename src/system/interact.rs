@@ -17,11 +17,11 @@ pub trait InteractProcess: System
 
 pub struct InteractSystem<T: InteractProcess>
 {
+    pub inner: T,
     interested_a: HashMap<Entity, IndexedEntity<T::Components>>,
     interested_b: HashMap<Entity, IndexedEntity<T::Components>>,
     aspect_a: Aspect<T::Components>,
     aspect_b: Aspect<T::Components>,
-    inner: T,
 }
 
 impl<T: InteractProcess> InteractSystem<T>

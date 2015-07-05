@@ -6,7 +6,7 @@ use {Process, System};
 /// System which operates every certain number of updates.
 pub struct LazySystem<T: Process>
 {
-    inner: Option<T>,
+    pub inner: Option<T>,
 }
 
 impl<T: Process> LazySystem<T>

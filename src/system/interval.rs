@@ -6,9 +6,9 @@ use {Process, System};
 /// System which operates every certain number of updates.
 pub struct IntervalSystem<T: Process>
 {
+    pub inner: T,
     interval: u8,
     ticker: u8,
-    inner: T,
 }
 
 impl<T: Process> IntervalSystem<T>
