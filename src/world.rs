@@ -192,9 +192,32 @@ impl<S: SystemManager> World<S>
         }
     }
 
+    #[cfg(feature="nightly")]
     pub fn flush_queue(&mut self)
     {
         for e in self.data.event_queue.drain(..) {
+            match e {
+                Event::BuildEntity(entity) => {
+                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &mut self.data.components); }
+                },
+                Event::RemoveEntity(entity) => {
+                    unsafe {
+                        let indexed = self.data.entities.indexed(&entity);
+                        self.systems.deactivated(EntityData(indexed), &mut self.data.components);
+                        self.data.components.remove_all(indexed);
+                    }
+                    self.data.entities.remove(&entity);
+                }
+            }
+        }
+    }
+
+    #[cfg(not(feature="nightly"))]
+    pub fn flush_queue(&mut self)
+    {
+        let mut events = Vec::new();
+        ::std::mem::swap(&mut self.event_queue, &mut events);
+        for e in events {
             match e {
                 Event::BuildEntity(entity) => {
                     unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &mut self.data.components); }

@@ -2,9 +2,10 @@
 #[cfg(feature="serialisation")] use cereal::{CerealData, CerealError, CerealResult};
 #[cfg(feature="serialisation")] use std::io::{Read, Write};
 
-use std::collections::{HashMap, VecMap};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
+use vec_map::VecMap;
 
 use self::InnerComponentList::{Hot, Cold};
 

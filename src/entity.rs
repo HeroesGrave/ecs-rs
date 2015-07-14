@@ -1,6 +1,8 @@
 
 //! Entity identifier and manager types.
 
+#[cfg(feature="serialisation")] use cereal::{CerealData, CerealResult};
+
 use std::collections::hash_map::{HashMap, Values};
 use std::default::Default;
 use std::marker::PhantomData;
@@ -13,12 +15,26 @@ use EntityData;
 pub type Id = u64;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature="serialisation", derive(CerealData))]
 pub struct Entity(Id);
 
+#[cfg(feature="serialisation")]
+impl_cereal_data!(Entity(), a);
+
 #[derive(Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature="serialisation", derive(CerealData))]
 pub struct IndexedEntity<T: ComponentManager>(usize, Entity, PhantomData<T>);
+
+// TODO: Cleanup
+#[cfg(feature="serialisation")]
+impl<T: ComponentManager> CerealData for IndexedEntity<T> {
+    fn write(&self, write: &mut ::std::io::Write) -> CerealResult<()> {
+        try!(self.0.write(write));
+        self.1.write(write)
+    }
+
+    fn read(read: &mut ::std::io::Read) -> CerealResult<IndexedEntity<T>> {
+        Ok(IndexedEntity(try!(CerealData::read(read)), try!(CerealData::read(read)), PhantomData))
+    }
+}
 
 impl Entity
 {
@@ -125,12 +141,29 @@ impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
 
 /// Handles creation, activation, and validating of entities.
 #[doc(hidden)]
-#[cfg_attr(feature="serialisation", derive(CerealData))]
 pub struct EntityManager<T: ComponentManager>
 {
     indices: IndexPool,
     entities: HashMap<Entity, IndexedEntity<T>>,
     next_id: Id,
+}
+
+// TODO: Cleanup
+#[cfg(feature="serialisation")]
+impl<T: ComponentManager> CerealData for EntityManager<T> {
+    fn write(&self, write: &mut ::std::io::Write) -> CerealResult<()> {
+        try!(self.indices.write(write));
+        try!(self.entities.write(write));
+        self.next_id.write(write)
+    }
+
+    fn read(read: &mut ::std::io::Read) -> CerealResult<EntityManager<T>> {
+        Ok(EntityManager {
+            indices: try!(CerealData::read(read)),
+            entities: try!(CerealData::read(read)),
+            next_id: try!(CerealData::read(read)),
+        })
+    }
 }
 
 impl<T: ComponentManager> EntityManager<T>
@@ -184,13 +217,14 @@ impl<T: ComponentManager> EntityManager<T>
     }
 }
 
-
-#[cfg_attr(feature="serialisation", derive(CerealData))]
 struct IndexPool
 {
     recycled: Vec<usize>,
     next_index: usize,
 }
+
+#[cfg(feature="serialisation")]
+impl_cereal_data!(IndexPool, recycled, next_index);
 
 impl IndexPool
 {

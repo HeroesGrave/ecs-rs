@@ -26,13 +26,12 @@
 #![crate_name = "ecs"]
 #![crate_type = "lib"]
 
-#![cfg_attr(feature="serialisation", feature(custom_derive, plugin))]
-#![cfg_attr(feature="serialisation", plugin(cereal_macros))]
-
-#![feature(vecmap, drain)]
+#![cfg_attr(feature="nightly", feature(drain))]
 
 #[cfg(feature="serialisation")]
+#[macro_use]
 extern crate cereal;
+extern crate vec_map;
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentList};
