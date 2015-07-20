@@ -12,7 +12,7 @@ use {Process, System};
 
 pub trait InteractProcess: System
 {
-    fn process<'a>(&self, EntityIter<'a, Self::Components>, EntityIter<'a, Self::Components>, &mut DataHelper<Self::Components, Self::Services>);
+    fn process<'a>(&mut self, EntityIter<'a, Self::Components>, EntityIter<'a, Self::Components>, &mut DataHelper<Self::Components, Self::Services>);
 }
 
 pub struct InteractSystem<T: InteractProcess>
