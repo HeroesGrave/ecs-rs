@@ -48,9 +48,9 @@ pub unsafe trait SystemManager
     type Components: ComponentManager;
     type Services: ServiceManager;
     unsafe fn new() -> Self;
-    unsafe fn activated(&mut self, EntityData<Self::Components>, &Self::Components);
-    unsafe fn reactivated(&mut self, EntityData<Self::Components>, &Self::Components);
-    unsafe fn deactivated(&mut self, EntityData<Self::Components>, &Self::Components);
+    unsafe fn activated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
+    unsafe fn reactivated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
+    unsafe fn deactivated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
     unsafe fn update(&mut self, &mut DataHelper<Self::Components, Self::Services>);
 }
 
@@ -181,14 +181,14 @@ impl<S: SystemManager> World<S>
     {
         let indexed = self.data.entities.indexed(&entity);
         modifier.modify(ModifyData(indexed), &mut self.data.components);
-        unsafe { self.systems.reactivated(EntityData(indexed), &mut self.data.components); }
+        unsafe { self.systems.reactivated(EntityData(indexed), &self.data.components, &mut self.data.services); }
     }
 
     pub fn refresh(&mut self)
     {
         self.flush_queue();
         for entity in self.data.entities.iter() {
-            unsafe { self.systems.reactivated(entity, &mut self.data.components); }
+            unsafe { self.systems.reactivated(entity, &self.data.components, &mut self.data.services); }
         }
     }
 
@@ -198,12 +198,12 @@ impl<S: SystemManager> World<S>
         for e in self.data.event_queue.drain(..) {
             match e {
                 Event::BuildEntity(entity) => {
-                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &mut self.data.components); }
+                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &self.data.components, &mut self.data.services); }
                 },
                 Event::RemoveEntity(entity) => {
                     unsafe {
                         let indexed = self.data.entities.indexed(&entity);
-                        self.systems.deactivated(EntityData(indexed), &mut self.data.components);
+                        self.systems.deactivated(EntityData(indexed), &self.data.components, &mut self.data.services);
                         self.data.components.remove_all(indexed);
                     }
                     self.data.entities.remove(&entity);
@@ -220,12 +220,12 @@ impl<S: SystemManager> World<S>
         for e in events {
             match e {
                 Event::BuildEntity(entity) => {
-                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &mut self.data.components); }
+                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &self.data.components, &mut self.data.services); }
                 },
                 Event::RemoveEntity(entity) => {
                     unsafe {
                         let indexed = self.data.entities.indexed(&entity);
-                        self.systems.deactivated(EntityData(indexed), &mut self.data.components);
+                        self.systems.deactivated(EntityData(indexed), &self.data.components, &mut self.data.services);
                         self.data.components.remove_all(indexed);
                     }
                     self.data.entities.remove(&entity);

@@ -43,67 +43,67 @@ impl<T: InteractProcess> System for InteractSystem<T>
 {
     type Components = T::Components;
     type Services = T::Services;
-    fn activated(&mut self, entity: &EntityData<T::Components>, world: &T::Components)
+    fn activated(&mut self, entity: &EntityData<T::Components>, components: &T::Components, services: &mut T::Services)
     {
-        if self.aspect_a.check(entity, world)
+        if self.aspect_a.check(entity, components)
         {
             self.interested_a.insert(***entity, unsafe { (**entity).clone() });
-            self.inner.activated(entity, world);
+            self.inner.activated(entity, components, services);
         }
-        if self.aspect_b.check(entity, world)
+        if self.aspect_b.check(entity, components)
         {
             self.interested_b.insert(***entity, unsafe { (**entity).clone() });
-            self.inner.activated(entity, world);
+            self.inner.activated(entity, components, services);
         }
     }
 
-    fn reactivated(&mut self, entity: &EntityData<T::Components>, world: &T::Components)
+    fn reactivated(&mut self, entity: &EntityData<T::Components>, components: &T::Components, services: &mut T::Services)
     {
         if self.interested_a.contains_key(entity)
         {
-            if self.aspect_a.check(entity, world)
+            if self.aspect_a.check(entity, components)
             {
-                self.inner.reactivated(entity, world);
+                self.inner.reactivated(entity, components, services);
             }
             else
             {
                 self.interested_a.remove(entity);
-                self.inner.deactivated(entity, world);
+                self.inner.deactivated(entity, components, services);
             }
         }
-        else if self.aspect_a.check(entity, world)
+        else if self.aspect_a.check(entity, components)
         {
             self.interested_a.insert(***entity, unsafe { (**entity).clone() });
-            self.inner.activated(entity, world);
+            self.inner.activated(entity, components, services);
         }
         if self.interested_b.contains_key(entity)
         {
-            if self.aspect_b.check(entity, world)
+            if self.aspect_b.check(entity, components)
             {
-                self.inner.reactivated(entity, world);
+                self.inner.reactivated(entity, components, services);
             }
             else
             {
                 self.interested_b.remove(entity);
-                self.inner.deactivated(entity, world);
+                self.inner.deactivated(entity, components, services);
             }
         }
-        else if self.aspect_b.check(entity, world)
+        else if self.aspect_b.check(entity, components)
         {
             self.interested_b.insert(***entity, unsafe { (**entity).clone() });
-            self.inner.activated(entity, world);
+            self.inner.activated(entity, components, services);
         }
     }
 
-    fn deactivated(&mut self, entity: &EntityData<T::Components>, world: &T::Components)
+    fn deactivated(&mut self, entity: &EntityData<T::Components>, components: &T::Components, services: &mut T::Services)
     {
         if self.interested_a.remove(entity).is_some()
         {
-            self.inner.deactivated(entity, world);
+            self.inner.deactivated(entity, components, services);
         }
         if self.interested_b.remove(entity).is_some()
         {
-            self.inner.deactivated(entity, world);
+            self.inner.deactivated(entity, components, services);
         }
     }
 

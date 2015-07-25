@@ -64,19 +64,19 @@ impl<T: Process> System for LazySystem<T>
 {
     type Components = T::Components;
     type Services = T::Services;
-    fn activated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
+    fn activated(&mut self, e: &EntityData<T::Components>, c: &T::Components, s: &mut T::Services)
     {
-        self.inner.as_mut().map(|sys| sys.activated(e, w));
+        self.inner.as_mut().map(|sys| sys.activated(e, c, s));
     }
 
-    fn reactivated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
+    fn reactivated(&mut self, e: &EntityData<T::Components>, c: &T::Components, s: &mut T::Services)
     {
-        self.inner.as_mut().map(|sys| sys.reactivated(e, w));
+        self.inner.as_mut().map(|sys| sys.reactivated(e, c, s));
     }
 
-    fn deactivated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
+    fn deactivated(&mut self, e: &EntityData<T::Components>, c: &T::Components, s: &mut T::Services)
     {
-        self.inner.as_mut().map(|sys| sys.deactivated(e, w));
+        self.inner.as_mut().map(|sys| sys.deactivated(e, c, s));
     }
 
     fn is_active(&self) -> bool

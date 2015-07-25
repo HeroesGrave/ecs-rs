@@ -274,17 +274,17 @@ mod macros
                     $Name
                 }
 
-                unsafe fn activated(&mut self, _: $crate::EntityData<$components>, _: &$components)
+                unsafe fn activated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
                 {
 
                 }
 
-                unsafe fn reactivated(&mut self, _: $crate::EntityData<$components>, _: &$components)
+                unsafe fn reactivated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
                 {
 
                 }
 
-                unsafe fn deactivated(&mut self, _: $crate::EntityData<$components>, _: &$components)
+                unsafe fn deactivated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
                 {
 
                 }
@@ -322,24 +322,24 @@ mod macros
                     }
                 }
 
-                unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
-                        $crate::System::activated(&mut self.$field_name, &en, co);
+                        $crate::System::activated(&mut self.$field_name, &en, co, se);
                     )+
                 }
 
-                unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
-                        $crate::System::reactivated(&mut self.$field_name, &en, co);
+                        $crate::System::reactivated(&mut self.$field_name, &en, co, se);
                     )+
                 }
 
-                unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components)
+                unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
-                        $crate::System::deactivated(&mut self.$field_name, &en, co);
+                        $crate::System::deactivated(&mut self.$field_name, &en, co, se);
                     )+
                 }
 

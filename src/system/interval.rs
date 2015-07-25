@@ -42,19 +42,19 @@ impl<T: Process> System for IntervalSystem<T>
 {
     type Components = T::Components;
     type Services = T::Services;
-    fn activated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
+    fn activated(&mut self, e: &EntityData<T::Components>, c: &T::Components, s: &mut T::Services)
     {
-        self.inner.activated(e, w);
+        self.inner.activated(e, c, s);
     }
 
-    fn reactivated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
+    fn reactivated(&mut self, e: &EntityData<T::Components>, c: &T::Components, s: &mut T::Services)
     {
-        self.inner.reactivated(e, w);
+        self.inner.reactivated(e, c, s);
     }
 
-    fn deactivated(&mut self, e: &EntityData<T::Components>, w: &T::Components)
+    fn deactivated(&mut self, e: &EntityData<T::Components>, c: &T::Components, s: &mut T::Services)
     {
-        self.inner.deactivated(e, w);
+        self.inner.deactivated(e, c, s);
     }
 
     fn is_active(&self) -> bool
