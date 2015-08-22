@@ -7,7 +7,6 @@ use std::ops::{Deref, DerefMut};
 use {BuildData, EntityData, ModifyData};
 use {Entity, IndexedEntity, EntityIter};
 use {EntityBuilder, EntityModifier};
-use {System};
 use entity::EntityManager;
 
 enum Event
@@ -30,28 +29,32 @@ pub struct DataHelper<C, M> where C: ComponentManager, M: ServiceManager
     event_queue: Vec<Event>,
 }
 
-pub unsafe trait ComponentManager: 'static
+pub trait ComponentManager: 'static+Sized
 {
-    unsafe fn new() -> Self;
-    unsafe fn remove_all(&mut self, &IndexedEntity<Self>);
+    #[doc(hidden)]
+    fn __new() -> Self;
+    #[doc(hidden)]
+    fn __remove_all(&mut self, &IndexedEntity<Self>);
 }
 
-pub trait ServiceManager: 'static
-{
-    fn new() -> Self;
-}
+pub trait ServiceManager: 'static {}
 
-impl ServiceManager for () { fn new(){} }
+impl ServiceManager for () {}
 
-pub unsafe trait SystemManager
+pub trait SystemManager
 {
     type Components: ComponentManager;
     type Services: ServiceManager;
-    unsafe fn new() -> Self;
-    unsafe fn activated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
-    unsafe fn reactivated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
-    unsafe fn deactivated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
-    unsafe fn update(&mut self, &mut DataHelper<Self::Components, Self::Services>);
+    #[doc(hidden)]
+    fn __new() -> Self;
+    #[doc(hidden)]
+    fn __activated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
+    #[doc(hidden)]
+    fn __reactivated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
+    #[doc(hidden)]
+    fn __deactivated(&mut self, EntityData<Self::Components>, &Self::Components, &mut Self::Services);
+    #[doc(hidden)]
+    fn __update(&mut self, &mut DataHelper<Self::Components, Self::Services>);
 }
 
 impl<S: SystemManager> Deref for World<S>
@@ -93,9 +96,8 @@ impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
     pub fn with_entity_data<F, R>(&mut self, entity: &Entity, mut call: F) -> Option<R>
         where F: FnMut(EntityData<C>, &mut C) -> R
     {
-        // TODO cleanup
         if self.entities.is_valid(entity) {
-            Some(call(EntityData(unsafe { &self.entities.indexed(&entity).clone() }), self))
+            Some(call(EntityData(&self.entities.indexed(&entity).__clone()), self))
         } else {
             None
         }
@@ -144,7 +146,7 @@ impl<C: ComponentManager, M: ServiceManager> CerealData for DataHelper<C, M> whe
 impl<S: SystemManager> World<S> where DataHelper<S::Components, S::Services>: CerealData {
     pub fn load(reader: &mut Read) -> CerealResult<World<S>> {
         let mut world = World {
-            systems: unsafe { S::new() },
+            systems: S::__new(),
             data: try!(CerealData::read(reader)),
         };
         world.refresh();
@@ -159,13 +161,26 @@ impl<S: SystemManager> World<S> where DataHelper<S::Components, S::Services>: Ce
 
 impl<S: SystemManager> World<S>
 {
-    pub fn new() -> World<S>
+    pub fn new() -> World<S> where S::Services: Default
     {
         World {
-            systems: unsafe { S::new() },
+            systems: S::__new(),
             data: DataHelper {
-                components: unsafe { S::Components::new() },
-                services: S::Services::new(),
+                components: S::Components::__new(),
+                services: S::Services::default(),
+                entities: EntityManager::new(),
+                event_queue: Vec::new(),
+            },
+        }
+    }
+
+    pub fn with_services(services: S::Services) -> World<S>
+    {
+        World {
+            systems: S::__new(),
+            data: DataHelper {
+                components: S::Components::__new(),
+                services: services,
                 entities: EntityManager::new(),
                 event_queue: Vec::new(),
             },
@@ -181,14 +196,16 @@ impl<S: SystemManager> World<S>
     {
         let indexed = self.data.entities.indexed(&entity);
         modifier.modify(ModifyData(indexed), &mut self.data.components);
-        unsafe { self.systems.reactivated(EntityData(indexed), &self.data.components, &mut self.data.services); }
+        self.systems.__reactivated(
+            EntityData(indexed), &self.data.components, &mut self.data.services
+        );
     }
 
     pub fn refresh(&mut self)
     {
         self.flush_queue();
         for entity in self.data.entities.iter() {
-            unsafe { self.systems.reactivated(entity, &self.data.components, &mut self.data.services); }
+            self.systems.__reactivated(entity, &self.data.components, &mut self.data.services);
         }
     }
 
@@ -197,14 +214,18 @@ impl<S: SystemManager> World<S>
     {
         for e in self.data.event_queue.drain(..) {
             match e {
-                Event::BuildEntity(entity) => {
-                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &self.data.components, &mut self.data.services); }
-                },
+                Event::BuildEntity(entity) => self.systems.__activated(
+                    EntityData(self.data.entities.indexed(&entity)),
+                    &self.data.components,
+                    &mut self.data.services
+                ),
                 Event::RemoveEntity(entity) => {
-                    unsafe {
+                    {
                         let indexed = self.data.entities.indexed(&entity);
-                        self.systems.deactivated(EntityData(indexed), &self.data.components, &mut self.data.services);
-                        self.data.components.remove_all(indexed);
+                        self.systems.__deactivated(
+                            EntityData(indexed), &self.data.components, &mut self.data.services
+                        );
+                        self.data.components.__remove_all(indexed);
                     }
                     self.data.entities.remove(&entity);
                 }
@@ -219,14 +240,18 @@ impl<S: SystemManager> World<S>
         ::std::mem::swap(&mut self.event_queue, &mut events);
         for e in events {
             match e {
-                Event::BuildEntity(entity) => {
-                    unsafe { self.systems.activated(EntityData(self.data.entities.indexed(&entity)), &self.data.components, &mut self.data.services); }
-                },
+                Event::BuildEntity(entity) => self.systems.__activated(
+                    EntityData(self.data.entities.indexed(&entity)),
+                    &self.data.components,
+                    &mut self.data.services
+                ),
                 Event::RemoveEntity(entity) => {
-                    unsafe {
+                    {
                         let indexed = self.data.entities.indexed(&entity);
-                        self.systems.deactivated(EntityData(indexed), &self.data.components, &mut self.data.services);
-                        self.data.components.remove_all(indexed);
+                        self.systems.__deactivated(
+                            EntityData(indexed), &self.data.components, &mut self.data.services
+                        );
+                        self.data.components.__remove_all(indexed);
                     }
                     self.data.entities.remove(&entity);
                 }
@@ -237,7 +262,7 @@ impl<S: SystemManager> World<S>
     pub fn update(&mut self)
     {
         self.flush_queue();
-        unsafe { self.systems.update(&mut self.data); }
+        self.systems.__update(&mut self.data);
         self.flush_queue();
     }
 }

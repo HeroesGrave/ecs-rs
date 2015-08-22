@@ -61,7 +61,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
     {
         if self.aspect.check(entity, components)
         {
-            self.interested.insert(***entity, unsafe { (**entity).clone() });
+            self.interested.insert(***entity, (**entity).__clone());
             self.inner.activated(entity, components, services);
         }
     }
@@ -82,7 +82,7 @@ impl<T: EntityProcess> System for EntitySystem<T>
         }
         else if self.aspect.check(entity, components)
         {
-            self.interested.insert(***entity, unsafe { (**entity).clone() });
+            self.interested.insert(***entity, (**entity).__clone());
             self.inner.activated(entity, components, services);
         }
     }

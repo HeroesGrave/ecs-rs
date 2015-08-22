@@ -69,9 +69,9 @@ impl<'a, T: ComponentManager> Clone for ModifyData<'a, T> { fn clone(&self) -> M
 impl<'a, T: ComponentManager> Clone for EntityData<'a, T> { fn clone(&self) -> EntityData<'a, T> { *self } }
 
 #[doc(hidden)]
-pub unsafe trait EditData<T: ComponentManager> { fn entity(&self) -> &IndexedEntity<T>; }
-unsafe impl<'a, T: ComponentManager> EditData<T> for ModifyData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
-unsafe impl<'a, T: ComponentManager> EditData<T> for EntityData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
+pub trait EditData<T: ComponentManager> { fn entity(&self) -> &IndexedEntity<T>; }
+impl<'a, T: ComponentManager> EditData<T> for ModifyData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
+impl<'a, T: ComponentManager> EditData<T> for EntityData<'a, T> { fn entity(&self) -> &IndexedEntity<T> { &self.0 } }
 
 // XXX: Eventually make these syntax extensions, once they are stabilised
 mod macros
@@ -94,14 +94,14 @@ mod macros
             $(#[$attr])*
             pub struct $Name;
 
-            unsafe impl $crate::ComponentManager for $Name
+            impl $crate::ComponentManager for $Name
             {
-                unsafe fn new() -> $Name
+                fn __new() -> $Name
                 {
                     $Name
                 }
 
-                unsafe fn remove_all(&mut self, _: &$crate::IndexedEntity<$Name>)
+                fn __remove_all(&mut self, _: &$crate::IndexedEntity<$Name>)
                 {
 
                 }
@@ -167,9 +167,9 @@ mod macros
                 )+
             }
 
-            unsafe impl $crate::ComponentManager for $Name
+            impl $crate::ComponentManager for $Name
             {
-                unsafe fn new() -> $Name
+                fn __new() -> $Name
                 {
                     $Name {
                         $(
@@ -178,10 +178,10 @@ mod macros
                     }
                 }
 
-                unsafe fn remove_all(&mut self, entity: &$crate::IndexedEntity<$Name>)
+                fn __remove_all(&mut self, entity: &$crate::IndexedEntity<$Name>)
                 {
                     $(
-                        self.$field_name.clear(entity)
+                        self.$field_name.__clear(entity)
                     );+
                 }
             }
@@ -219,43 +219,6 @@ mod macros
     }
 
     #[macro_export]
-    macro_rules! services {
-        {
-            $(#[$attr:meta])*
-            struct $Name:ident {
-                $($field_name:ident : $field_ty:ty = $field_init:expr),+
-            }
-        } => {
-            $(#[$attr])*
-            pub struct $Name {
-                $(
-                    pub $field_name : $field_ty,
-                )+
-            }
-
-            impl $crate::ServiceManager for $Name
-            {
-                fn new() -> $Name
-                {
-                    $Name {
-                        $(
-                            $field_name : $field_init,
-                        )+
-                    }
-                }
-            }
-        };
-        {
-            $(#[$attr:meta])*
-            struct $Name:ident {
-                $($field_name:ident : $field_ty:ty = $field_init:expr),+,
-            }
-        } => {
-            services! { $(#[$attr])* struct $Name { $($field_name : $field_ty = $field_init),+ } }
-        }
-    }
-
-    #[macro_export]
     macro_rules! systems {
         {
             $(#[$attr:meta])*
@@ -264,32 +227,31 @@ mod macros
             $(#[$attr])*
             pub struct $Name;
 
-            unsafe impl $crate::SystemManager for $Name
+            impl $crate::SystemManager for $Name
             {
                 type Components = $components;
                 type Services = $services;
-                #[allow(unused_unsafe)] // The aspect macro is probably going to be used here and it also expands to an unsafe block.
-                unsafe fn new() -> $Name
+                fn __new() -> $Name
                 {
                     $Name
                 }
 
-                unsafe fn activated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
+                fn __activated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
                 {
 
                 }
 
-                unsafe fn reactivated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
+                fn __reactivated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
                 {
 
                 }
 
-                unsafe fn deactivated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
+                fn __deactivated(&mut self, _: $crate::EntityData<$components>, _: &$components, _: &mut $services)
                 {
 
                 }
 
-                unsafe fn update(&mut self, _: &mut $crate::DataHelper<$components, $services>)
+                fn __update(&mut self, _: &mut $crate::DataHelper<$components, $services>)
                 {
 
                 }
@@ -308,12 +270,11 @@ mod macros
                 )+
             }
 
-            unsafe impl $crate::SystemManager for $Name
+            impl $crate::SystemManager for $Name
             {
                 type Components = $components;
                 type Services = $services;
-                #[allow(unused_unsafe)] // The aspect macro is probably going to be used here and it also expands to an unsafe block.
-                unsafe fn new() -> $Name
+                fn __new() -> $Name
                 {
                     $Name {
                         $(
@@ -322,28 +283,28 @@ mod macros
                     }
                 }
 
-                unsafe fn activated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
+                fn __activated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
                         $crate::System::activated(&mut self.$field_name, &en, co, se);
                     )+
                 }
 
-                unsafe fn reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
+                fn __reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
                         $crate::System::reactivated(&mut self.$field_name, &en, co, se);
                     )+
                 }
 
-                unsafe fn deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
+                fn __deactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
                         $crate::System::deactivated(&mut self.$field_name, &en, co, se);
                     )+
                 }
 
-                unsafe fn update(&mut self, co: &mut $crate::DataHelper<$components, $services>)
+                fn __update(&mut self, co: &mut $crate::DataHelper<$components, $services>)
                 {
                     $(
                         if $crate::System::is_active(&self.$field_name) {
@@ -375,12 +336,10 @@ mod macros
             all: [$($all_field:ident),*]
             none: [$($none_field:ident),*]
         } => {
-            unsafe {
-                $crate::Aspect::new(Box::new(|_en: &$crate::EntityData<$components>, _co: &$components| {
-                    ($(_co.$all_field.has(_en) &&)* true) &&
-                    !($(_co.$none_field.has(_en) ||)* false)
-                }))
-            }
+            $crate::Aspect::__new(Box::new(|_en: &$crate::EntityData<$components>, _co: &$components| {
+                ($(_co.$all_field.has(_en) &&)* true) &&
+                !($(_co.$none_field.has(_en) ||)* false)
+            }))
         };
         {
             <$components:ty>

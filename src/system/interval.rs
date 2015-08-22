@@ -1,4 +1,6 @@
 
+use std::ops::{Deref, DerefMut};
+
 use DataHelper;
 use EntityData;
 use {Process, System};
@@ -22,6 +24,23 @@ impl<T: Process> IntervalSystem<T>
             ticker: 0,
             inner: system,
         }
+    }
+}
+
+impl<T: Process> Deref for IntervalSystem<T>
+{
+    type Target = T;
+    fn deref(&self) -> &T
+    {
+        &self.inner
+    }
+}
+
+impl<T: Process> DerefMut for IntervalSystem<T>
+{
+    fn deref_mut(&mut self) -> &mut T
+    {
+        &mut self.inner
     }
 }
 

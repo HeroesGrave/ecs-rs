@@ -15,7 +15,8 @@ impl<T: ComponentManager> Aspect<T>
         Aspect(Box::new(|_, _| false))
     }
 
-    pub unsafe fn new(inner: Box<Fn(&EntityData<T>, &T) -> bool + 'static>) -> Aspect<T>
+    #[doc(hidden)]
+    pub fn __new(inner: Box<Fn(&EntityData<T>, &T) -> bool + 'static>) -> Aspect<T>
     {
         Aspect(inner)
     }

@@ -159,7 +159,7 @@ impl<C: ComponentManager, T: Component> ComponentList<C, T>
         }
     }
 
-    pub unsafe fn clear(&mut self, entity: &IndexedEntity<C>)
+    pub fn __clear(&mut self, entity: &IndexedEntity<C>)
     {
         match self.0
         {

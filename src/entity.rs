@@ -58,7 +58,8 @@ impl<T: ComponentManager> IndexedEntity<T>
         self.0
     }
 
-    pub unsafe fn clone(&self) -> IndexedEntity<T>
+    #[doc(hidden)]
+    pub fn __clone(&self) -> IndexedEntity<T>
     {
         IndexedEntity(self.0, self.1, self.2)
     }

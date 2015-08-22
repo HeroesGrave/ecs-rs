@@ -1,5 +1,6 @@
 
 #![cfg(feature="serialisation")]
+#![cfg(feature="nightly")]
 
 #![feature(plugin)]
 #![feature(custom_derive)]
@@ -10,7 +11,7 @@
 extern crate ecs;
 extern crate cereal;
 
-use ecs::{EntityIter, System, World};
+use ecs::{EntityIter, ServiceManager, System, World};
 use ecs::system::{EntityProcess, EntitySystem};
 use std::io::Cursor;
 
@@ -47,12 +48,12 @@ systems!(
     }
 );
 
-services!(
-    #[derive(CerealData)]
-    struct TestServices {
-        check: u32 = 0,
-    }
-);
+#[derive(Default, CerealData)]
+pub struct TestServices {
+    pub check: u32,
+}
+
+impl ServiceManager for TestServices {}
 
 pub type DataHelper = ecs::DataHelper<TestComponents, TestServices>;
 

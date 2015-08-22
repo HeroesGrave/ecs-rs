@@ -2,6 +2,7 @@
 //! System to specifically deal with interactions between two types of entity.
 
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 use Aspect;
 use DataHelper;
@@ -22,6 +23,23 @@ pub struct InteractSystem<T: InteractProcess>
     interested_b: HashMap<Entity, IndexedEntity<T::Components>>,
     aspect_a: Aspect<T::Components>,
     aspect_b: Aspect<T::Components>,
+}
+
+impl<T: InteractProcess> Deref for InteractSystem<T>
+{
+    type Target = T;
+    fn deref(&self) -> &T
+    {
+        &self.inner
+    }
+}
+
+impl<T: InteractProcess> DerefMut for InteractSystem<T>
+{
+    fn deref_mut(&mut self) -> &mut T
+    {
+        &mut self.inner
+    }
 }
 
 impl<T: InteractProcess> InteractSystem<T>
@@ -47,12 +65,12 @@ impl<T: InteractProcess> System for InteractSystem<T>
     {
         if self.aspect_a.check(entity, components)
         {
-            self.interested_a.insert(***entity, unsafe { (**entity).clone() });
+            self.interested_a.insert(***entity, (**entity).__clone());
             self.inner.activated(entity, components, services);
         }
         if self.aspect_b.check(entity, components)
         {
-            self.interested_b.insert(***entity, unsafe { (**entity).clone() });
+            self.interested_b.insert(***entity, (**entity).__clone());
             self.inner.activated(entity, components, services);
         }
     }
@@ -73,7 +91,7 @@ impl<T: InteractProcess> System for InteractSystem<T>
         }
         else if self.aspect_a.check(entity, components)
         {
-            self.interested_a.insert(***entity, unsafe { (**entity).clone() });
+            self.interested_a.insert(***entity, (**entity).__clone());
             self.inner.activated(entity, components, services);
         }
         if self.interested_b.contains_key(entity)
@@ -90,7 +108,7 @@ impl<T: InteractProcess> System for InteractSystem<T>
         }
         else if self.aspect_b.check(entity, components)
         {
-            self.interested_b.insert(***entity, unsafe { (**entity).clone() });
+            self.interested_b.insert(***entity, (**entity).__clone());
             self.inner.activated(entity, components, services);
         }
     }
