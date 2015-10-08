@@ -1,7 +1,7 @@
 [package]
 
 name = "ecs"
-version = "0.21.1"
+version = "0.21.2"
 authors = ["HeroesGrave"]
 description = "An Entity Component System (ECS) Framework"
 repository = "https://github.com/HeroesGrave/ecs-rs"
@@ -21,11 +21,11 @@ nightly = []
 serialisation = ["cereal"]
 
 [dependencies.cereal]
-version = "*"
+version = "^0.3"
 optional = true
 
 # [dev-dependencies.cereal_macros] # Only works with nightly
 # version = "*"
 
 [dependencies]
-vec_map = "*"
+vec_map = "^0.3"
