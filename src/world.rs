@@ -118,7 +118,7 @@ impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
 }
 
 #[cfg(feature="serialisation")]
-impl<C: ComponentManager, M: ServiceManager> CerealData for DataHelper<C, M> where C: CerealData, M: CerealData {
+unsafe impl<C: ComponentManager, M: ServiceManager> CerealData for DataHelper<C, M> where C: CerealData, M: CerealData {
     fn write(&self, w: &mut Write) -> CerealResult<()> {
         if self.event_queue.len() != 0 {
             Err(CerealError::Msg("Please flush events before serialising the world".to_string()))

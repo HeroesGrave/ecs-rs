@@ -26,7 +26,7 @@ enum InnerComponentList<T: Component>
 }
 
 #[cfg(feature="serialisation")]
-impl<C: ComponentManager, T: Component> CerealData for ComponentList<C, T> where T: CerealData {
+unsafe impl<C: ComponentManager, T: Component> CerealData for ComponentList<C, T> where T: CerealData {
     fn write(&self, w: &mut Write) -> CerealResult<()> {
         self.0.write(w)
     }
@@ -37,22 +37,22 @@ impl<C: ComponentManager, T: Component> CerealData for ComponentList<C, T> where
 }
 
 #[cfg(feature="serialisation")]
-impl<T: Component> CerealData for InnerComponentList<T> where T: CerealData {
+unsafe impl<T: Component> CerealData for InnerComponentList<T> where T: CerealData {
     fn write(&self, w: &mut Write) -> CerealResult<()> {
         match *self {
             Hot(ref list) => {
                 try!(1u8.write(w));
-                try!(list.len().write(w));
+                try!((list.len() as u64).write(w));
                 for (idx, data) in list {
-                    try!(idx.write(w));
+                    try!((idx as u64).write(w));
                     try!(data.write(w));
                 }
             },
             Cold(ref list) => {
                 try!(2u8.write(w));
-                try!(list.len().write(w));
+                try!((list.len() as u64).write(w));
                 for (idx, data) in list {
-                    try!(idx.write(w));
+                    try!((*idx as u64).write(w));
                     try!(data.write(w));
                 }
             },
@@ -64,18 +64,18 @@ impl<T: Component> CerealData for InnerComponentList<T> where T: CerealData {
         let kind: u8 = try!(CerealData::read(r));
         match kind {
             1 => { // Hot
-                let len = try!(CerealData::read(r));
+                let len = try!(u64::read(r)) as usize;
                 let mut map = VecMap::with_capacity(len);
                 for _ in 0..len {
-                    map.insert(try!(CerealData::read(r)), try!(CerealData::read(r)));
+                    map.insert(try!(u64::read(r)) as usize, try!(CerealData::read(r)));
                 }
                 Ok(Hot(map))
             },
             2 => { // Cold
-                let len = try!(CerealData::read(r));
+                let len = try!(u64::read(r)) as usize;
                 let mut map = HashMap::with_capacity(len);
                 for _ in 0..len {
-                    map.insert(try!(CerealData::read(r)), try!(CerealData::read(r)));
+                    map.insert(try!(u64::read(r)) as usize, try!(CerealData::read(r)));
                 }
                 Ok(Cold(map))
             },

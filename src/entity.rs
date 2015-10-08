@@ -25,14 +25,14 @@ pub struct IndexedEntity<T: ComponentManager>(usize, Entity, PhantomData<T>);
 
 // TODO: Cleanup
 #[cfg(feature="serialisation")]
-impl<T: ComponentManager> CerealData for IndexedEntity<T> {
+unsafe impl<T: ComponentManager> CerealData for IndexedEntity<T> {
     fn write(&self, write: &mut ::std::io::Write) -> CerealResult<()> {
-        try!(self.0.write(write));
+        try!((self.0 as u64).write(write));
         self.1.write(write)
     }
 
     fn read(read: &mut ::std::io::Read) -> CerealResult<IndexedEntity<T>> {
-        Ok(IndexedEntity(try!(CerealData::read(read)), try!(CerealData::read(read)), PhantomData))
+        Ok(IndexedEntity(try!(u64::read(read)) as usize, try!(CerealData::read(read)), PhantomData))
     }
 }
 
@@ -151,7 +151,7 @@ pub struct EntityManager<T: ComponentManager>
 
 // TODO: Cleanup
 #[cfg(feature="serialisation")]
-impl<T: ComponentManager> CerealData for EntityManager<T> {
+unsafe impl<T: ComponentManager> CerealData for EntityManager<T> {
     fn write(&self, write: &mut ::std::io::Write) -> CerealResult<()> {
         try!(self.indices.write(write));
         try!(self.entities.write(write));
@@ -224,8 +224,30 @@ struct IndexPool
     next_index: usize,
 }
 
+// TODO: Cleanup
 #[cfg(feature="serialisation")]
-impl_cereal_data!(IndexPool, recycled, next_index);
+unsafe impl CerealData for IndexPool {
+    fn write(&self, write: &mut ::std::io::Write) -> CerealResult<()> {
+        try!((self.recycled.len() as u64).write(write));
+        for &idx in &self.recycled {
+            try!((idx as u64).write(write));
+        }
+        (self.next_index as u64).write(write)
+    }
+
+    fn read(read: &mut ::std::io::Read) -> CerealResult<IndexPool> {
+        let len = try!(u64::read(read)) as usize;
+        let mut indices = Vec::with_capacity(len);
+        for _ in 0..len {
+            indices.push(try!(u64::read(read)) as usize);
+        }
+        Ok(IndexPool {
+            recycled: indices,
+            next_index: try!(u64::read(read)) as usize,
+        })
+    }
+}
+
 
 impl IndexPool
 {
