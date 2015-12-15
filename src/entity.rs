@@ -1,7 +1,7 @@
 
 //! Entity identifier and manager types.
 
-#[cfg(feature="serialisation")] use cereal::{CerealData, CerealResult};
+#[cfg(feature="serialisation")] use cereal::{CerealData, CerealError, CerealResult};
 
 use std::collections::hash_map::{HashMap, Values};
 use std::default::Default;
@@ -9,8 +9,12 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use Aspect;
+use BuildData;
 use ComponentManager;
 use EntityData;
+use EntityBuilder;
+use ServiceManager;
+use SystemManager;
 
 pub type Id = u64;
 
@@ -106,6 +110,11 @@ impl<'a, T: ComponentManager> EntityIter<'a, T>
             components: components,
         }
     }
+
+    pub fn clone(&self) -> Self {
+        let EntityIter::Map(ref values) = *self;
+        EntityIter::Map(values.clone())
+    }
 }
 
 impl<'a, T: ComponentManager> Iterator for EntityIter<'a, T>
@@ -140,12 +149,19 @@ impl<'a, T: ComponentManager> Iterator for FilteredEntityIter<'a, T>
     }
 }
 
+enum Event
+{
+    BuildEntity(Entity),
+    RemoveEntity(Entity),
+}
+
 /// Handles creation, activation, and validating of entities.
 #[doc(hidden)]
 pub struct EntityManager<T: ComponentManager>
 {
     indices: IndexPool,
     entities: HashMap<Entity, IndexedEntity<T>>,
+    event_queue: Vec<Event>,
     next_id: Id,
 }
 
@@ -153,9 +169,13 @@ pub struct EntityManager<T: ComponentManager>
 #[cfg(feature="serialisation")]
 unsafe impl<T: ComponentManager> CerealData for EntityManager<T> {
     fn write(&self, write: &mut ::std::io::Write) -> CerealResult<()> {
-        try!(self.indices.write(write));
-        try!(self.entities.write(write));
-        self.next_id.write(write)
+        if self.event_queue.len() != 0 {
+            Err(CerealError::Msg("Please flush events before serialising the world".to_string()))
+        } else {
+            try!(self.indices.write(write));
+            try!(self.entities.write(write));
+            self.next_id.write(write)
+        }
     }
 
     fn read(read: &mut ::std::io::Read) -> CerealResult<EntityManager<T>> {
@@ -163,6 +183,7 @@ unsafe impl<T: ComponentManager> CerealData for EntityManager<T> {
             indices: try!(CerealData::read(read)),
             entities: try!(CerealData::read(read)),
             next_id: try!(CerealData::read(read)),
+            event_queue: Vec::new(),
         })
     }
 }
@@ -177,7 +198,44 @@ impl<T: ComponentManager> EntityManager<T>
             indices: IndexPool::new(),
             entities: HashMap::new(),
             next_id: 0,
+            event_queue: Vec::new(),
         }
+    }
+
+    pub fn flush_queue<M, S>(&mut self, c: &mut T, m: &mut M, s: &mut S)
+    where M: ServiceManager, S: SystemManager<Components=T, Services=M>
+    {
+        let queue = ::std::mem::replace(&mut self.event_queue, Vec::new());
+        for e in queue {
+            match e {
+                Event::BuildEntity(entity) => s.__activated(
+                    EntityData(self.indexed(&entity)),
+                    c,
+                    m
+                ),
+                Event::RemoveEntity(entity) => {
+                    {
+                        let indexed = self.indexed(&entity);
+                        s.__deactivated(EntityData(indexed), c, m);
+                        c.__remove_all(indexed);
+                    }
+                    self.remove(&entity);
+                }
+            }
+        }
+    }
+
+    pub fn create_entity<B>(&mut self, builder: B, c: &mut T) -> Entity where B: EntityBuilder<T>
+    {
+        let entity = self.create();
+        builder.build(BuildData(self.indexed(&entity)), c);
+        self.event_queue.push(Event::BuildEntity(entity));
+        entity
+    }
+
+    pub fn remove_entity(&mut self, entity: Entity)
+    {
+        self.event_queue.push(Event::RemoveEntity(entity));
     }
 
     pub fn iter(&self) -> EntityIter<T>

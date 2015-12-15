@@ -1,19 +1,13 @@
 
-#[cfg(feature="serialisation")] use cereal::{CerealData, CerealError, CerealResult};
+#[cfg(feature="serialisation")] use cereal::{CerealData, CerealResult};
 #[cfg(feature="serialisation")] use std::io::{Read, Write};
 
 use std::ops::{Deref, DerefMut};
 
-use {BuildData, EntityData, ModifyData};
+use {EntityData, ModifyData};
 use {Entity, IndexedEntity, EntityIter};
 use {EntityBuilder, EntityModifier};
 use entity::EntityManager;
-
-enum Event
-{
-    BuildEntity(Entity),
-    RemoveEntity(Entity),
-}
 
 pub struct World<S> where S: SystemManager
 {
@@ -26,7 +20,6 @@ pub struct DataHelper<C, M> where C: ComponentManager, M: ServiceManager
     pub components: C,
     pub services: M,
     entities: EntityManager<C>,
-    event_queue: Vec<Event>,
 }
 
 pub trait ComponentManager: 'static+Sized
@@ -105,28 +98,21 @@ impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
 
     pub fn create_entity<B>(&mut self, builder: B) -> Entity where B: EntityBuilder<C>
     {
-        let entity = self.entities.create();
-        builder.build(BuildData(self.entities.indexed(&entity)), &mut self.components);
-        self.event_queue.push(Event::BuildEntity(entity));
-        entity
+        self.entities.create_entity(builder, &mut self.components)
     }
 
     pub fn remove_entity(&mut self, entity: Entity)
     {
-        self.event_queue.push(Event::RemoveEntity(entity));
+        self.entities.remove_entity(entity);
     }
 }
 
 #[cfg(feature="serialisation")]
 unsafe impl<C: ComponentManager, M: ServiceManager> CerealData for DataHelper<C, M> where C: CerealData, M: CerealData {
     fn write(&self, w: &mut Write) -> CerealResult<()> {
-        if self.event_queue.len() != 0 {
-            Err(CerealError::Msg("Please flush events before serialising the world".to_string()))
-        } else {
-            try!(self.services.write(w));
-            try!(self.entities.write(w));
-            self.components.write(w)
-        }
+        try!(self.services.write(w));
+        try!(self.entities.write(w));
+        self.components.write(w)
     }
 
     fn read(r: &mut Read) -> CerealResult<Self> {
@@ -137,7 +123,6 @@ unsafe impl<C: ComponentManager, M: ServiceManager> CerealData for DataHelper<C,
             components: components,
             services: services,
             entities: entities,
-            event_queue: Vec::new(),
         })
     }
 }
@@ -169,7 +154,6 @@ impl<S: SystemManager> World<S>
                 components: S::Components::__new(),
                 services: S::Services::default(),
                 entities: EntityManager::new(),
-                event_queue: Vec::new(),
             },
         }
     }
@@ -182,7 +166,6 @@ impl<S: SystemManager> World<S>
                 components: S::Components::__new(),
                 services: services,
                 entities: EntityManager::new(),
-                event_queue: Vec::new(),
             },
         }
     }
@@ -209,54 +192,13 @@ impl<S: SystemManager> World<S>
         }
     }
 
-    #[cfg(feature="nightly")]
     pub fn flush_queue(&mut self)
     {
-        for e in self.data.event_queue.drain(..) {
-            match e {
-                Event::BuildEntity(entity) => self.systems.__activated(
-                    EntityData(self.data.entities.indexed(&entity)),
-                    &self.data.components,
-                    &mut self.data.services
-                ),
-                Event::RemoveEntity(entity) => {
-                    {
-                        let indexed = self.data.entities.indexed(&entity);
-                        self.systems.__deactivated(
-                            EntityData(indexed), &self.data.components, &mut self.data.services
-                        );
-                        self.data.components.__remove_all(indexed);
-                    }
-                    self.data.entities.remove(&entity);
-                }
-            }
-        }
-    }
-
-    #[cfg(not(feature="nightly"))]
-    pub fn flush_queue(&mut self)
-    {
-        let mut events = Vec::new();
-        ::std::mem::swap(&mut self.event_queue, &mut events);
-        for e in events {
-            match e {
-                Event::BuildEntity(entity) => self.systems.__activated(
-                    EntityData(self.data.entities.indexed(&entity)),
-                    &self.data.components,
-                    &mut self.data.services
-                ),
-                Event::RemoveEntity(entity) => {
-                    {
-                        let indexed = self.data.entities.indexed(&entity);
-                        self.systems.__deactivated(
-                            EntityData(indexed), &self.data.components, &mut self.data.services
-                        );
-                        self.data.components.__remove_all(indexed);
-                    }
-                    self.data.entities.remove(&entity);
-                }
-            }
-        }
+        self.data.entities.flush_queue(
+            &mut self.data.components,
+            &mut self.data.services,
+            &mut self.systems
+        );
     }
 
     pub fn update(&mut self)

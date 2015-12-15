@@ -23,7 +23,6 @@ pub struct SomeFeature;
 
 components! {
     #[builder(EntityInit)]
-    #[modifier(EntityChange)]
     struct TestComponents {
         #[hot] blank_data: (),
         #[hot] position: Position,
@@ -112,11 +111,11 @@ fn test_general_1()
         assert!(c.feature.insert(&e, SomeFeature).is_some());
     });
 
-    world.modify_entity(entity, EntityChange {
-        position: Some(Some(Position { x: 0.5, y: 0.7 })), // Set
-        team: Some(None), // Remove
-        ..Default::default() // Ignore the rest (None)
-    });
+    // world.modify_entity(entity, EntityChange {
+    //     position: Some(Some(Position { x: 0.5, y: 0.7 })), // Set
+    //     team: Some(None), // Remove
+    //     ..Default::default() // Ignore the rest (None)
+    // });
 
     process!(world, print_position);
 

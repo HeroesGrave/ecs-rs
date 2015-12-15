@@ -109,7 +109,6 @@ mod macros
         };
         {
             #[builder($Builder:ident)]
-            #[modifier($Modifier:ident)]
             $(#[$attr:meta])*
             struct $Name:ident {
                 $(#[$kind:ident] $field_name:ident : $field_ty:ty),+
@@ -130,26 +129,6 @@ mod macros
                 {
                     $(
                         self.$field_name.map(|cmpt| c.$field_name.add(&e, cmpt))
-                    );+;
-                }
-            }
-
-            #[derive(Default)]
-            pub struct $Modifier {
-                $(
-                    pub $field_name : Option<Option<$field_ty>>,
-                )+
-            }
-
-            impl $crate::EntityModifier<$Name> for $Modifier
-            {
-                fn modify(self, e: $crate::ModifyData<$Name>, c: &mut $Name)
-                {
-                    $(
-                        self.$field_name.map(|opt| match opt {
-                            Some(cmpt) => c.$field_name.insert(&e, cmpt),
-                            None => c.$field_name.remove(&e),
-                        })
                     );+;
                 }
             }
@@ -188,7 +167,6 @@ mod macros
         };
         {
             #[builder($Builder:ident)]
-            #[modifier($Modifier:ident)]
             $(#[$attr:meta])*
             struct $Name:ident {
                 $(#[$kind:ident] $field_name:ident : $field_ty:ty),+,
@@ -196,7 +174,6 @@ mod macros
         } => {
             components!(
                 #[builder($Builder)]
-                #[modifier($Modifier)]
                 $(#[$attr])*
                 struct $Name {
                     $(#[$kind] $field_name : $field_ty),+
