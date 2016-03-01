@@ -94,11 +94,6 @@ impl<T: EntityProcess> System for EntitySystem<T>
             self.inner.deactivated(entity, components, services);
         }
     }
-
-    fn is_active(&self) -> bool
-    {
-        self.inner.is_active()
-    }
 }
 
 impl<T: EntityProcess> Process for EntitySystem<T>

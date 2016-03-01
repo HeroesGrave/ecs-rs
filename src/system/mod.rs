@@ -41,11 +41,6 @@ pub trait System
     {
 
     }
-
-    fn is_active(&self) -> bool
-    {
-        true
-    }
 }
 
 pub trait Process: System

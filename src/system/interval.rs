@@ -75,9 +75,4 @@ impl<T: Process> System for IntervalSystem<T>
     {
         self.inner.deactivated(e, c, s);
     }
-
-    fn is_active(&self) -> bool
-    {
-        self.inner.is_active()
-    }
 }

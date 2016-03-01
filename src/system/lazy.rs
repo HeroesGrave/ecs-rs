@@ -78,9 +78,4 @@ impl<T: Process> System for LazySystem<T>
     {
         self.inner.as_mut().map(|sys| sys.deactivated(e, c, s));
     }
-
-    fn is_active(&self) -> bool
-    {
-        self.inner.as_ref().map(|sys| sys.is_active()).unwrap_or(false)
-    }
 }

@@ -83,6 +83,11 @@ mod macros
         } => {
             $crate::Process::process(&mut $world.systems.$system, &mut $world.data)
         };
+        {
+            $world:expr, $system:ident . $function:ident ($($args:expr),*)
+        } => {
+            $world.systems.$system.$function($($args,)* &mut $world.data)
+        };
     }
 
     #[macro_export]
@@ -237,14 +242,18 @@ mod macros
         {
             $(#[$attr:meta])*
             struct $Name:ident<$components:ty, $services:ty> {
-                $($field_name:ident : $field_ty:ty = $field_init:expr),+
+                active: {
+                    $($field_name:ident : $field_ty:ty = $field_init:expr,)+
+                },
+                passive: {
+                    $($p_field_name:ident : $p_field_ty:ty = $p_field_init:expr,)+
+                }
             }
         } => {
             $(#[$attr])*
             pub struct $Name {
-                $(
-                    pub $field_name : $field_ty,
-                )+
+                $(pub $field_name : $field_ty,)+
+                $(pub $p_field_name : $p_field_ty,)+
             }
 
             impl $crate::SystemManager for $Name
@@ -257,6 +266,9 @@ mod macros
                         $(
                             $field_name : $field_init,
                         )+
+                        $(
+                            $p_field_name : $p_field_init,
+                        )+
                     }
                 }
 
@@ -265,12 +277,18 @@ mod macros
                     $(
                         $crate::System::activated(&mut self.$field_name, &en, co, se);
                     )+
+                    $(
+                        $crate::System::activated(&mut self.$p_field_name, &en, co, se);
+                    )+
                 }
 
                 fn __reactivated(&mut self, en: $crate::EntityData<$components>, co: &$components, se: &mut $services)
                 {
                     $(
                         $crate::System::reactivated(&mut self.$field_name, &en, co, se);
+                    )+
+                    $(
+                        $crate::System::reactivated(&mut self.$p_field_name, &en, co, se);
                     )+
                 }
 
@@ -279,31 +297,19 @@ mod macros
                     $(
                         $crate::System::deactivated(&mut self.$field_name, &en, co, se);
                     )+
+                    $(
+                        $crate::System::deactivated(&mut self.$p_field_name, &en, co, se);
+                    )+
                 }
 
                 fn __update(&mut self, co: &mut $crate::DataHelper<$components, $services>)
                 {
                     $(
-                        if $crate::System::is_active(&self.$field_name) {
-                            $crate::Process::process(&mut self.$field_name, co);
-                        }
+                        $crate::Process::process(&mut self.$field_name, co);
                     )+
                 }
             }
         };
-        {
-            $(#[$attr:meta])*
-            struct $Name:ident<$components:ty, $services:ty> {
-                $($field_name:ident : $field_ty:ty = $field_init:expr),+,
-            }
-        } => {
-            systems!(
-                $(#[$attr])*
-                struct $Name<$components, $services> {
-                    $($field_name : $field_ty = $field_init),+
-                }
-            );
-        }
     }
 
     #[macro_export]
