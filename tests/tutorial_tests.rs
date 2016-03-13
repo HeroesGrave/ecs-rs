@@ -99,7 +99,6 @@ pub mod chapter5 {
     impl System for PrintMessage {
         type Components = MyComponents;
         type Services = ();
-        fn is_active(&self) -> bool { false }
     }
     impl Process for PrintMessage {
         fn process(&mut self, _: &mut DataHelper<MyComponents, ()>) {
@@ -109,7 +108,11 @@ pub mod chapter5 {
 
     systems! {
         struct MySystems<MyComponents, ()> {
-            print_msg: PrintMessage = PrintMessage("Hello World".to_string())
+            active: {
+            },
+            passive: {
+                print_msg: PrintMessage = PrintMessage("Hello World".to_string()),
+            }
         }
     }
 
@@ -160,7 +163,11 @@ pub mod chapter6 {
 
     systems! {
         struct MySystems<MyComponents, ()> {
-            motion: EntitySystem<MotionProcess> = EntitySystem::new(MotionProcess, aspect!(<MyComponents> all: [position, velocity]))
+            active: {
+                motion: EntitySystem<MotionProcess> = EntitySystem::new(MotionProcess, aspect!(<MyComponents> all: [position, velocity])),
+            },
+            passive: {
+            }
         }
     }
 

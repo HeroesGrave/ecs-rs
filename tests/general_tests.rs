@@ -33,12 +33,16 @@ components! {
 
 systems! {
     struct TestSystems<TestComponents, ()> {
-        hello_world: HelloWorld = HelloWorld("Hello, World!"),
-        print_position: EntitySystem<PrintPosition> = EntitySystem::new(PrintPosition,
-                aspect!(<TestComponents>
-                    all: [position, feature]
-                )
-            )
+        active: {
+            hello_world: HelloWorld = HelloWorld("Hello, World!"),
+        },
+        passive: {
+            print_position: EntitySystem<PrintPosition> = EntitySystem::new(PrintPosition,
+                                                                            aspect!(<TestComponents>
+                                                                                    all: [position, feature]
+                                                                            )
+            ),
+        }
     }
 }
 
@@ -68,7 +72,6 @@ impl EntityProcess for PrintPosition
 impl System for PrintPosition {
     type Components = TestComponents;
     type Services = ();
-    fn is_active(&self) -> bool { false }
 }
 
 #[test]
