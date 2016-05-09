@@ -201,7 +201,10 @@ To add the system, we modify our call to the `systems!` macro to look like this:
 ```rust
 systems! {
     struct MySystems<MyComponents, ()> {
-        print_msg: PrintMessage = PrintMessage("Hello World".to_string())
+        active: {
+            print_msg: PrintMessage = PrintMessage("Hello World".to_string())
+        }
+        passive: {}
     }
 }
 ```
@@ -298,16 +301,19 @@ Next, we have to add this to the systems definition:
 ```rust
 systems! {
     struct MySystems<MyComponents, ()> {
-        motion: EntitySystem<MotionProcess> = EntitySystem::new(
-            MotionProcess,
-            aspect!(<MyComponents> all: [position, velocity])
-        )
+        active: {
+            motion: EntitySystem<MotionProcess> = EntitySystem::new(
+                MotionProcess,
+                aspect!(<MyComponents> all: [position, velocity])
+            )
+        }
+        passive: {}
     }
 }
 ```
 This might require a bit of explaining.
 
-The `EntitySystem` type iss generic over the trait `EntityProcess`, and to create it, you need to pass an `EntityProcess` and an `Aspect`.
+The `EntitySystem` type is generic over the trait `EntityProcess`, and to create it, you need to pass an `EntityProcess` and an `Aspect`.
 
 `EntityProcess` has already been explained.
 `Aspect`s, as mentioned earlier, are filters used to separate out the entities that have the components to fulfill certain requirements.
