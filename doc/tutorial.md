@@ -202,8 +202,8 @@ To add the system, we modify our call to the `systems!` macro to look like this:
 systems! {
     struct MySystems<MyComponents, ()> {
         active: {
-            print_msg: PrintMessage = PrintMessage("Hello World".to_string())
-        }
+            print_msg: PrintMessage = PrintMessage("Hello World".to_string()),
+        },
         passive: {}
     }
 }
