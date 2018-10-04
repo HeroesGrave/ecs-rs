@@ -86,8 +86,8 @@ impl<C: ComponentManager, M: ServiceManager> DerefMut for DataHelper<C, M>
 
 impl<C: ComponentManager, M: ServiceManager> DataHelper<C, M>
 {
-    pub fn with_entity_data<F, R>(&mut self, entity: &Entity, mut call: F) -> Option<R>
-        where F: FnMut(EntityData<C>, &mut C) -> R
+    pub fn with_entity_data<F, R>(&mut self, entity: &Entity, call: F) -> Option<R>
+        where F: FnOnce(EntityData<C>, &mut C) -> R
     {
         if self.entities.is_valid(entity) {
             Some(call(EntityData(&self.entities.indexed(&entity).__clone()), self))
