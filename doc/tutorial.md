@@ -304,10 +304,10 @@ systems! {
         active: {
             motion: EntitySystem<MotionProcess> = EntitySystem::new(
                 MotionProcess,
-                aspect!(<MyComponents> all: [position, velocity])
-            )
-        }
-        passive: {}
+                aspect!(<MyComponents> all: [position, velocity]),
+            ),
+        },
+        passive: {},
     }
 }
 ```
